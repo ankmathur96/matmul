@@ -13,7 +13,7 @@
 
 CC = cc 
 OPT = -O2
-CFLAGS = -Wall -std=gnu99 $(OPT)
+CFLAGS = -Wall -std=gnu99 -mavx $(OPT)
 LDFLAGS = -Wall
 # librt is needed for clock_gettime
 LDLIBS = -lrt -lblas
@@ -30,6 +30,8 @@ all : clean $(targets)
 benchmark-naive : benchmark.o dgemm-naive.o 
 	$(CC) -o $@ $^ $(LDLIBS)
 benchmark-blocked : benchmark.o dgemm-blocked.o
+	$(CC) -o $@ $^ $(LDLIBS)
+benchmark-blocked-ankit : benchmark.o dgemm-blocked-ankit.o
 	$(CC) -o $@ $^ $(LDLIBS)
 benchmark-blas : benchmark.o dgemm-blas.o
 	$(CC) -o $@ $^ $(LDLIBS)

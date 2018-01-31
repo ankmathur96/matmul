@@ -72,6 +72,11 @@ static void do_block (int lda, int M, int N, int K, double* A, double* B, double
  * On exit, A and B maintain their input values. */  
 void square_dgemm (int lda, double* A, double* B, double* C)
 {
+  double AT[lda*lda];
+  for (int i = 0; i < lda; i += 1)
+      for (int j = 0; j < lda; j += 1)
+          AT[i+j*lda] = A[j+i*lda];
+
   /* For each block-row of A */ 
   for (int i = 0; i < lda; i += BLOCK_SIZE)
     /* For each block-column of B */

@@ -24,24 +24,26 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 
 #define min(a,b) (((a)<(b))?(a):(b))
 
+#include <immintrin.h>
+
 // // assume 4x4. 
 static void do_instrinsic(double* AT, double* BT, double* CT)
 {
-  __m256d b0 = _mm256_load_pd(BT)
-  __m256d b1 = _mm256_load_pd(BT + 4)
-  __m256d b2 = _mm256_load_pd(BT + 8)
-  __m256d b3 = _mm256_load_pd(BT + 12)
+  __m256d b0 = _mm256_load_pd(BT);
+  __m256d b1 = _mm256_load_pd(BT + 4);
+  __m256d b2 = _mm256_load_pd(BT + 8);
+  __m256d b3 = _mm256_load_pd(BT + 12);
   // unroll this loop.
   for (int i = 0; i < 4; i++) {
-    __m256d a = _mm256_load_pd(AT + i)
-    __m256d c = _mm256_load_pd(CT + i)
-    __m256d a_elem = _mm256_set1_pd(a[0])
+    __m256d a = _mm256_load_pd(AT + i);
+    __m256d c = _mm256_load_pd(CT + i);
+    __m256d a_elem = _mm256_set1_pd(a[0]);
     c = _mm_fmadd_pd(a_elem, b0, c)
-    __m256d a_elem = _mm256_set1_pd(a[1])
+    __m256d a_elem = _mm256_set1_pd(a[1]);
     c = _mm_fmadd_pd(a_elem, b1, c)
-    __m256d a_elem = _mm256_set1_pd(a[2])
+    __m256d a_elem = _mm256_set1_pd(a[2]);
     c = _mm_fmadd_pd(a_elem, b2, c)
-    __m256d a_elem = _mm256_set1_pd(a[3])
+    __m256d a_elem = _mm256_set1_pd(a[3]);
     c = _mm_fmadd_pd(a_elem, b3, c)
     _mm256_store_pd(CT + i, c)
   }
