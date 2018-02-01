@@ -27,19 +27,21 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 #include <immintrin.h>
 #include <stdio.h>
 
-// // assume 4x4. 
+void print_row(__m256d a) {
+  printf("%f %f %f %f\n\n", a[0], a[1], a[2], a[3]);
+}
+
+// assume 4x4. 
 static void do_instrinsic(double* AT, double* BT, double* CT)
 {
-  printf("Before loads into packed memory");
-  __m256d b0 = _mm256_load_pd(BT);
-  __m256d b1 = _mm256_load_pd(BT + 4);
-  __m256d b2 = _mm256_load_pd(BT + 8);
-  __m256d b3 = _mm256_load_pd(BT + 12);
-  printf("After loads into packed memory");
+  __m256d b0 = _mm256_loadu_pd(BT);
+  __m256d b1 = _mm256_loadu_pd(BT + 4);
+  __m256d b2 = _mm256_loadu_pd(BT + 8);
+  __m256d b3 = _mm256_loadu_pd(BT + 12);
   // unroll this loop.
   for (int i = 0; i < 4; i++) {
-    __m256d a = _mm256_load_pd(AT + i);
-    __m256d c = _mm256_load_pd(CT + i);
+    __m256d a = _mm256_loadu_pd(AT + 4 * i);
+    __m256d c = _mm256_loadu_pd(CT + 4 * i);
     __m256d a_elem = _mm256_set1_pd(a[0]);
     c = _mm256_fmadd_pd(a_elem, b0, c);
     a_elem = _mm256_set1_pd(a[1]);
@@ -48,9 +50,7 @@ static void do_instrinsic(double* AT, double* BT, double* CT)
     c = _mm256_fmadd_pd(a_elem, b2, c);
     a_elem = _mm256_set1_pd(a[3]);
     c = _mm256_fmadd_pd(a_elem, b3, c);
-    printf("Before store into packed memory");
-    _mm256_store_pd(CT + i, c);
-    printf("After store into packed memory");
+    _mm256_storeu_pd(CT + 4 * i, c);
   }
 }
 
@@ -98,7 +98,6 @@ static void do_block (int lda, int M, int N, int K, double* AT, double* BT, doub
  * On exit, A and B maintain their input values. */
 void square_dgemm (int lda, double* A, double* B, double* C)
 {
-  printf("Before transpose");
   double AT[lda*lda];
   for (int i = 0; i < lda; i += 1)
       for (int j = 0; j < lda; j += 1)
@@ -111,7 +110,6 @@ void square_dgemm (int lda, double* A, double* B, double* C)
   for (int i = 0; i < lda; i += 1)
       for (int j = 0; j < lda; j += 1)
           CT[i+j*lda] = C[j+i*lda];
-  printf("After transpose");
   /* For each block-row of A */
   for (int i = 0; i < lda; i += BLOCK_SIZE) {
     /* For each block-column of B */
@@ -120,7 +118,6 @@ void square_dgemm (int lda, double* A, double* B, double* C)
       /* Accumulate block dgemms into block of C */
       for (int k = 0; k < lda; k += BLOCK_SIZE)
       {
-        printf("In loop");
       	/* Correct block dimensions if block "goes off edge of" the matrix */
       	int M = min (BLOCK_SIZE, lda-i);
       	int N = min (BLOCK_SIZE, lda-j);
