@@ -20,31 +20,31 @@ LDLIBS = -lrt -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKL
 const char* dgemm_desc = "Simple blocked dgemm.";
 
 #if !defined(BLOCK_SIZE)
-#define BLOCK_SIZE 256
+#define BLOCK_SIZE 128
 #endif
-#define INNER_BLOCK_SIZE 64
+#define INNER_BLOCK_SIZE 32
 
 #define min(a,b) (((a)<(b))?(a):(b))
 
-static void do_block_register (int lda, double* AT, double* B, double* C) {
-  double tmp[4] __attribute__((aligned));
-  __m256d a0 = _mm256_loadu_pd(AT);
-  __m256d a1 = _mm256_loadu_pd(AT+lda);
-  __m256d a2 = _mm256_loadu_pd(AT+2*lda);
-  __m256d a3 = _mm256_loadu_pd(AT+3*lda);
-  __m256d b0 = _mm256_loadu_pd(B);
-  __m256d b1 = _mm256_loadu_pd(B+lda);
-  __m256d b2 = _mm256_loadu_pd(B+2*lda);
-  __m256d b3 = _mm256_loadu_pd(B+3*lda);
-  __m256d aarr[4] = {a0, a1, a2, a3};
-  __m256d barr[4] = {b0, b1, b2, b3};
+static void do_intrinsic(int lda, double* AT, double* BT, double* CT)
+{
+  __m256d b0 = _mm256_loadu_pd(BT);
+  __m256d b1 = _mm256_loadu_pd(BT + lda);
+  __m256d b2 = _mm256_loadu_pd(BT + 2*lda);
+  __m256d b3 = _mm256_loadu_pd(BT + 3*lda);
+  // unroll this loop.
   for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < 4; j++) {
-          double cij = C[i + j*lda];
-          _mm256_storeu_pd(tmp, _mm256_mul_pd(aarr[i], barr[j]));
-          cij += tmp[0] + tmp[1] + tmp[2] + tmp[3];
-          C[i + j*lda] = cij;
-      }
+    __m256d a = _mm256_loadu_pd(AT + lda * i);
+    __m256d c = _mm256_loadu_pd(CT + lda * i);
+    __m256d a_elem = _mm256_set1_pd(a[0]);
+    c = _mm256_fmadd_pd(a_elem, b0, c);
+    a_elem = _mm256_set1_pd(a[1]);
+    c = _mm256_fmadd_pd(a_elem, b1, c);
+    a_elem = _mm256_set1_pd(a[2]);
+    c = _mm256_fmadd_pd(a_elem, b2, c);
+    a_elem = _mm256_set1_pd(a[3]);
+    c = _mm256_fmadd_pd(a_elem, b3, c);
+    _mm256_storeu_pd(CT + lda * i, c);
   }
 }
 
@@ -84,14 +84,18 @@ static void do_block_test() {
     for (int i = 0; i < 4; i += 1)
         for (int j = 0; j < 4; j += 1)
             B[i+j*4] = ((double*)BT)[j+i*4];
-    double C[4][4] = {
+    double CT[4][4] = {
         {0, 0, 0, 0},
         {0, 0, 0, 0},
         {0, 0, 0, 0},
         {0, 0, 0, 0},
     };
-    do_block_register(4, (double*)AT, (double*)B, (double*)C);
-//    do_reference(4, (double*)A, (double*)B, (double*)C);
+    do_intrinsic(4, (double*)AT, (double*)BT, (double*)CT);
+    double C[4][4];
+    for (int i = 0; i < 4; i += 1)
+        for (int j = 0; j < 4; j += 1)
+            ((double*)C)[i+j*4] = ((double*)CT)[j+i*4];
+    do_reference(4, (double*)A, (double*)B, (double*)C);
     printf("---\n");
     printf("%f %f %f %f\n", C[0][0], C[1][0], C[2][0], C[3][0]);
     printf("%f %f %f %f\n", C[0][1], C[1][1], C[2][1], C[3][1]);
@@ -99,36 +103,25 @@ static void do_block_test() {
     printf("%f %f %f %f\n", C[0][3], C[1][3], C[2][3], C[3][3]);
 }
 
-static void do_block_inner_ref (int lda, int M, int N, int K, double* AT, double* B, double* C)
+static void do_block_inner_ref (int lda, int M, int N, int K, double* AT, double* BT, double* CT)
 {
-  double tmp[4] __attribute__((aligned));
   /* For each row i of A */
   for (int i = 0; i < M; ++i)
     /* For each column j of B */ 
     for (int j = 0; j < N; ++j)
     {
       /* Compute C(i,j) */
-      double cij = C[i+j*lda];
-      __m256d ctmp = _mm256_setzero_pd();
-      int k = 0;
-      for (; k < K - 3; k += 4) {
-        __m256d a0 = _mm256_loadu_pd(AT + i*lda + k);
-        __m256d b0 = _mm256_loadu_pd(B + j*lda + k);
-        ctmp = _mm256_fmadd_pd(a0, b0, ctmp);
-      }
-      for (; k < K; k += 1) {
-        cij += AT[k+i*lda] * B[k+j*lda];
-      }
-      _mm256_store_pd(tmp, ctmp);
-      cij += tmp[0] + tmp[1] + tmp[2] + tmp[3];
-      C[i+j*lda] = cij;
+      double cij = CT[j+i*lda];
+      for (int k = 0; k < K; ++k)
+        cij += AT[k+i*lda] * BT[j+k*lda];
+      CT[j+i*lda] = cij;
     }
 }
 
 /* This auxiliary subroutine performs a smaller dgemm operation
  *  C := C + A * B
  * where C is M-by-N, A is M-by-K, and B is K-by-N. */
-static void do_block_inner (int lda, int M, int N, int K, double* AT, double* B, double* C)
+static void do_block_inner (int lda, int M, int N, int K, double* AT, double* BT, double* CT)
 {
   for (int i = 0; i < M; i += 4)
     for (int j = 0; j < N; j += 4)
@@ -137,14 +130,14 @@ static void do_block_inner (int lda, int M, int N, int K, double* AT, double* B,
         int N2 = min (4, N-j);
         int K2 = min (4, K-k);
         if (M2 == 4 && N2 == 4 && K2 == 4) {
-            do_block_register(lda, AT + k + i*lda, B + k + j*lda, C + i + j*lda);
+            do_intrinsic(lda, AT + k + i*lda, BT + j + k*lda, CT + j + i*lda);
         } else {
-            do_block_inner_ref(lda, M2, N2, K2, AT + k + i*lda, B + k + j*lda, C + i + j*lda);
+            do_block_inner_ref(lda, M2, N2, K2, AT + k + i*lda, BT + j + k*lda, CT + j + i*lda);
         }
       }
 }
 
-static void do_block (int lda, int M, int N, int K, double* AT, double* B, double* C)
+static void do_block (int lda, int M, int N, int K, double* AT, double* BT, double* CT)
 {
   /* For each row i of A */
   for (int i = 0; i < M; i += INNER_BLOCK_SIZE)
@@ -155,8 +148,7 @@ static void do_block (int lda, int M, int N, int K, double* AT, double* B, doubl
           int M2 = min (INNER_BLOCK_SIZE, M-i);
           int N2 = min (INNER_BLOCK_SIZE, N-j);
           int K2 = min (INNER_BLOCK_SIZE, K-k);
-          do_block_inner(lda, M2, N2, K2, AT + k + i*lda, B + k + j*lda, C + i + j*lda);
-//          do_block_inner_ref(lda, M2, N2, K2, AT + k + i*lda, B + k + j*lda, C + i + j*lda);
+          do_block_inner(lda, M2, N2, K2, AT + k + i*lda, BT + j + k*lda, CT + j + i*lda);
       }
     }
 }
@@ -170,10 +162,18 @@ void square_dgemm (int lda, double* A, double* B, double* C)
   assert(BLOCK_SIZE % 4 == 0);
   assert(INNER_BLOCK_SIZE % 4 == 0);
 //  do_block_test();
-  double AT[lda*lda];
+  double* AT = malloc(sizeof(double)*lda*lda);
   for (int i = 0; i < lda; i += 1)
       for (int j = 0; j < lda; j += 1)
           AT[i+j*lda] = A[j+i*lda];
+  double* BT = malloc(sizeof(double)*lda*lda);
+  for (int i = 0; i < lda; i += 1)
+      for (int j = 0; j < lda; j += 1)
+          BT[i+j*lda] = B[j+i*lda];
+  double* CT = malloc(sizeof(double)*lda*lda);
+  for (int i = 0; i < lda; i += 1)
+      for (int j = 0; j < lda; j += 1)
+          CT[i+j*lda] = C[j+i*lda];
 
   /* For each block-row of A */ 
   for (int i = 0; i < lda; i += BLOCK_SIZE)
@@ -188,6 +188,12 @@ void square_dgemm (int lda, double* A, double* B, double* C)
         int K = min (BLOCK_SIZE, lda-k);
 
         /* Perform individual block dgemm */
-        do_block(lda, M, N, K, AT + k + i*lda, B + k + j*lda, C + i + j*lda);
+        do_block(lda, M, N, K, AT + k + i*lda, BT + j + k*lda, CT + j + i*lda);
       }
+  for (int i = 0; i < lda; i += 1)
+      for (int j = 0; j < lda; j += 1)
+          C[i+j*lda] = CT[j+i*lda];
+  free(AT);
+  free(BT);
+  free(CT);
 }
