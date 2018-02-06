@@ -22,7 +22,7 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 #if !defined(BLOCK_SIZE)
 #define BLOCK_SIZE 256
 #endif
-#define INNER_BLOCK_SIZE 32
+#define INNER_BLOCK_SIZE 128
 
 #define min(a,b) (((a)<(b))?(a):(b))
 
@@ -480,6 +480,15 @@ static void do_block_inner_ref (int lda, int M, int N, int K, double* A, double*
     {
       /* Compute C(i,j) */
       double cij = C[i+j*lda];
+      // if (K == 4) {
+      //   __m256d b = _mm256_loadu_pd(B + j*lda);
+      //   __m256d a = _mm256_set_pd(A[i+0*lda], A[i+1*lda], A[i+2*lda], A[i+3*lda]);
+      //   __m256d c_elem = _mm256_mul_pd(a, b);
+      //   cij += c_elem[0] + c_elem[1] + c_elem[2] + c_elem[3];
+      // } else {
+      //   for (int k = 0; k < K; ++k)
+      //     cij += A[i+k*lda] * B[k+j*lda];
+      // }
       for (int k = 0; k < K; ++k)
         cij += A[i+k*lda] * B[k+j*lda];
       C[i+j*lda] = cij;
@@ -491,9 +500,10 @@ static void do_block_inner_ref (int lda, int M, int N, int K, double* A, double*
  * where C is M-by-N, A is M-by-K, and B is K-by-N. */
 static void do_block_inner (int lda, int M, int N, int K, double* A, double* B, double* C)
 {
-  for (int i = 0; i < M; i += 8)
-    for (int j = 0; j < N; j += 8)
-      for (int k = 0; k < K; k += 8) {
+  for (int j = 0; j < N; j += 8)
+    for (int k = 0; k < K; k += 8)
+      for (int i = 0; i < M; i += 8)
+      {
         int M2 = min (8, M-i);
         int N2 = min (8, N-j);
         int K2 = min (8, K-k);
@@ -508,11 +518,12 @@ static void do_block_inner (int lda, int M, int N, int K, double* A, double* B, 
 static void do_block (int lda, int M, int N, int K, double* A, double* B, double* C)
 {
   /* For each row i of A */
-  for (int i = 0; i < M; i += INNER_BLOCK_SIZE)
+  for (int j = 0; j < N; j += INNER_BLOCK_SIZE)
     /* For each column j of B */ 
-    for (int j = 0; j < N; j += INNER_BLOCK_SIZE)
+    for (int k = 0; k < K; k += INNER_BLOCK_SIZE)
     {
-      for (int k = 0; k < K; k += INNER_BLOCK_SIZE) {
+      for (int i = 0; i < M; i += INNER_BLOCK_SIZE)
+      {
           int M2 = min (INNER_BLOCK_SIZE, M-i);
           int N2 = min (INNER_BLOCK_SIZE, N-j);
           int K2 = min (INNER_BLOCK_SIZE, K-k);
@@ -532,11 +543,11 @@ void square_dgemm (int lda, double* A, double* B, double* C)
 //  do_block_test();
 
   /* For each block-row of A */ 
-  for (int i = 0; i < lda; i += BLOCK_SIZE)
+  for (int j = 0; j < lda; j += BLOCK_SIZE)
     /* For each block-column of B */
-    for (int j = 0; j < lda; j += BLOCK_SIZE)
+    for (int k = 0; k < lda; k += BLOCK_SIZE)
       /* Accumulate block dgemms into block of C */
-      for (int k = 0; k < lda; k += BLOCK_SIZE)
+      for (int i = 0; i < lda; i += BLOCK_SIZE)
       {
         /* Correct block dimensions if block "goes off edge of" the matrix */
         int M = min (BLOCK_SIZE, lda-i);
