@@ -28,23 +28,57 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 
 static void do_intrinsic(int lda, double* A, double* B, double* C)
 {
-  __m256d a_col0 = _mm256_loadu_pd(A);
-  __m256d a_col1 = _mm256_loadu_pd(A + lda);
-  __m256d a_col2 = _mm256_loadu_pd(A + 2*lda);
-  __m256d a_col3 = _mm256_loadu_pd(A + 3*lda);
+  __m256d a_col00 = _mm256_loadu_pd(A);
+  __m256d a_col01 = _mm256_loadu_pd(A + 4);
+  __m256d a_col10 = _mm256_loadu_pd(A + lda);
+  __m256d a_col11 = _mm256_loadu_pd(A + lda + 4);
+  __m256d a_col20 = _mm256_loadu_pd(A + 2*lda);
+  __m256d a_col21 = _mm256_loadu_pd(A + 2*lda + 4);
+  __m256d a_col30 = _mm256_loadu_pd(A + 3*lda);
+  __m256d a_col31 = _mm256_loadu_pd(A + 3*lda + 4);
+  __m256d a_col40 = _mm256_loadu_pd(A + 4*lda);
+  __m256d a_col41 = _mm256_loadu_pd(A + 4*lda + 4);
+  __m256d a_col50 = _mm256_loadu_pd(A + 5*lda);
+  __m256d a_col51 = _mm256_loadu_pd(A + 5*lda + 4);
+  __m256d a_col60 = _mm256_loadu_pd(A + 6*lda);
+  __m256d a_col61 = _mm256_loadu_pd(A + 6*lda + 4);
+  __m256d a_col70 = _mm256_loadu_pd(A + 7*lda);
+  __m256d a_col71 = _mm256_loadu_pd(A + 7*lda + 4);
   // unroll this loop.
-  for (int i = 0; i < 4; i++) {
-    __m256d b_col = _mm256_loadu_pd(B + lda * i);
-    __m256d c_col = _mm256_loadu_pd(C + lda * i);
-    __m256d b_elem = _mm256_set1_pd(b_col[0]);
-    c_col = _mm256_fmadd_pd(a_col0, b_elem, c_col);
-    b_elem = _mm256_set1_pd(b_col[1]);
-    c_col = _mm256_fmadd_pd(a_col1, b_elem, c_col);
-    b_elem = _mm256_set1_pd(b_col[2]);
-    c_col = _mm256_fmadd_pd(a_col2, b_elem, c_col);
-    b_elem = _mm256_set1_pd(b_col[3]);
-    c_col = _mm256_fmadd_pd(a_col3, b_elem, c_col);
-    _mm256_storeu_pd(C + lda * i, c_col);
+  for (int i = 0; i < 8; i++) {
+    __m256d b_col0 = _mm256_loadu_pd(B + lda * i);
+    __m256d b_col1 = _mm256_loadu_pd(B + lda * i + 4);
+    __m256d c_col0 = _mm256_loadu_pd(C + lda * i);
+    __m256d c_col1 = _mm256_loadu_pd(C + lda * i + 4);
+
+    __m256d b_elem = _mm256_set1_pd(b_col0[0]);
+    c_col0 = _mm256_fmadd_pd(a_col00, b_elem, c_col0);
+    c_col1 = _mm256_fmadd_pd(a_col01, b_elem, c_col1);
+    b_elem = _mm256_set1_pd(b_col0[1]);
+    c_col0 = _mm256_fmadd_pd(a_col10, b_elem, c_col0);
+    c_col1 = _mm256_fmadd_pd(a_col11, b_elem, c_col1);
+    b_elem = _mm256_set1_pd(b_col0[2]);
+    c_col0 = _mm256_fmadd_pd(a_col20, b_elem, c_col0);
+    c_col1 = _mm256_fmadd_pd(a_col21, b_elem, c_col1);
+    b_elem = _mm256_set1_pd(b_col0[3]);
+    c_col0 = _mm256_fmadd_pd(a_col30, b_elem, c_col0);
+    c_col1 = _mm256_fmadd_pd(a_col31, b_elem, c_col1);
+
+    b_elem = _mm256_set1_pd(b_col1[0]);
+    c_col0 = _mm256_fmadd_pd(a_col40, b_elem, c_col0);
+    c_col1 = _mm256_fmadd_pd(a_col41, b_elem, c_col1);
+    b_elem = _mm256_set1_pd(b_col1[1]);
+    c_col0 = _mm256_fmadd_pd(a_col50, b_elem, c_col0);
+    c_col1 = _mm256_fmadd_pd(a_col51, b_elem, c_col1);
+    b_elem = _mm256_set1_pd(b_col1[2]);
+    c_col0 = _mm256_fmadd_pd(a_col60, b_elem, c_col0);
+    c_col1 = _mm256_fmadd_pd(a_col61, b_elem, c_col1);
+    b_elem = _mm256_set1_pd(b_col1[3]);
+    c_col0 = _mm256_fmadd_pd(a_col70, b_elem, c_col0);
+    c_col1 = _mm256_fmadd_pd(a_col71, b_elem, c_col1);
+
+    _mm256_storeu_pd(C + lda * i, c_col0);
+    _mm256_storeu_pd(C + lda * i + 4, c_col1);
   }
 }
 
@@ -123,13 +157,13 @@ static void do_block_inner_ref (int lda, int M, int N, int K, double* A, double*
  * where C is M-by-N, A is M-by-K, and B is K-by-N. */
 static void do_block_inner (int lda, int M, int N, int K, double* A, double* B, double* C)
 {
-  for (int i = 0; i < M; i += 4)
-    for (int j = 0; j < N; j += 4)
-      for (int k = 0; k < K; k += 4) {
-        int M2 = min (4, M-i);
-        int N2 = min (4, N-j);
-        int K2 = min (4, K-k);
-        if (M2 == 4 && N2 == 4 && K2 == 4) {
+  for (int i = 0; i < M; i += 8)
+    for (int j = 0; j < N; j += 8)
+      for (int k = 0; k < K; k += 8) {
+        int M2 = min (8, M-i);
+        int N2 = min (8, N-j);
+        int K2 = min (8, K-k);
+        if (M2 == 8 && N2 == 8 && K2 == 8) {
             do_intrinsic(lda, A + i + k*lda, B + k + j*lda, C + i + j*lda);
         } else {
             do_block_inner_ref(lda, M2, N2, K2, A + i + k*lda, B + k + j*lda, C + i + j*lda);
