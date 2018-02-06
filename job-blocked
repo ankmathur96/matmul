@@ -8,4 +8,5 @@
 #SBATCH -o job-blocked.o%j
 #SBATCH -e job-blocked.e%j
 
+export OMP_NUM_THREADS=32
 srun -N 1 -n 1 ./benchmark-blocked

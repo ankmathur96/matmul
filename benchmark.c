@@ -12,8 +12,8 @@
 #endif
 
 // On Cori
-// 2.3 GHz * 8 vector width * 2 flops for FMA = 36.8 GF/s
-#define MAX_SPEED 36.8
+// 32 cores * 2.3 GHz * 8 vector width * 2 flops for FMA = 1177.6 GF/s
+#define MAX_SPEED 1177.6
 
 /* reference_dgemm wraps a call to the BLAS-3 routine DGEMM, via the standard FORTRAN interface - hence the reference semantics. */ 
 #define DGEMM dgemm_
@@ -164,7 +164,7 @@ int main (int argc, char **argv)
   for (int i=0; i<nsizes;i++)
     aveper+= per[i];
   aveper/=nsizes*1.0;
-  
+
   /* Printing average percentage to screen */
   printf("Average percentage of Peak = %g\n",aveper);
 

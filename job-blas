@@ -8,5 +8,5 @@
 #SBATCH -o job-blas.o%j
 #SBATCH -e job-blas.e%j
 
-export MKL_NUM_THREADS=1
+export MKL_NUM_THREADS=32
 srun -N 1 -n 1 ./benchmark-blas
