@@ -2,4 +2,5 @@
 benchmark-blas
 benchmark-naive
 benchmark-blocked
+benchmark-blocked2
 benchmark-blocked-ankit

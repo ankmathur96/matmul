@@ -28,6 +28,7 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 
 static void do_intrinsic(int lda, double* A, double* B, double* C)
 {
+  // Load all the columns of A
   __m256d a_col00 = _mm256_loadu_pd(A);
   __m256d a_col01 = _mm256_loadu_pd(A + 4);
   __m256d a_col10 = _mm256_loadu_pd(A + lda);
@@ -44,15 +45,20 @@ static void do_intrinsic(int lda, double* A, double* B, double* C)
   __m256d a_col61 = _mm256_loadu_pd(A + 6*lda + 4);
   __m256d a_col70 = _mm256_loadu_pd(A + 7*lda);
   __m256d a_col71 = _mm256_loadu_pd(A + 7*lda + 4);
-  // unroll this loop.
+
+  // For each column of B + C
   for (int i = 0; i < 8; i++) {
+    // Load the B column in 2 pieces
     __m256d b_col0 = _mm256_loadu_pd(B + lda * i);
     __m256d b_col1 = _mm256_loadu_pd(B + lda * i + 4);
+    // Load the C column in 2 pieces
     __m256d c_col0 = _mm256_loadu_pd(C + lda * i);
     __m256d c_col1 = _mm256_loadu_pd(C + lda * i + 4);
 
+    // Broadcast the first element of the B col, dot with A col
     __m256d b_elem = _mm256_set1_pd(b_col0[0]);
     c_col0 = _mm256_fmadd_pd(a_col00, b_elem, c_col0);
+    // Repeat...
     c_col1 = _mm256_fmadd_pd(a_col01, b_elem, c_col1);
     b_elem = _mm256_set1_pd(b_col0[1]);
     c_col0 = _mm256_fmadd_pd(a_col10, b_elem, c_col0);
@@ -64,6 +70,7 @@ static void do_intrinsic(int lda, double* A, double* B, double* C)
     c_col0 = _mm256_fmadd_pd(a_col30, b_elem, c_col0);
     c_col1 = _mm256_fmadd_pd(a_col31, b_elem, c_col1);
 
+    // Repeat more with second half of B col
     b_elem = _mm256_set1_pd(b_col1[0]);
     c_col0 = _mm256_fmadd_pd(a_col40, b_elem, c_col0);
     c_col1 = _mm256_fmadd_pd(a_col41, b_elem, c_col1);
@@ -77,6 +84,7 @@ static void do_intrinsic(int lda, double* A, double* B, double* C)
     c_col0 = _mm256_fmadd_pd(a_col70, b_elem, c_col0);
     c_col1 = _mm256_fmadd_pd(a_col71, b_elem, c_col1);
 
+    // Store two halves of C col
     _mm256_storeu_pd(C + lda * i, c_col0);
     _mm256_storeu_pd(C + lda * i + 4, c_col1);
   }
