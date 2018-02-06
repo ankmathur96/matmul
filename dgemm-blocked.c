@@ -22,7 +22,7 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 #if !defined(BLOCK_SIZE)
 #define BLOCK_SIZE 256
 #endif
-#define INNER_BLOCK_SIZE 64
+#define INNER_BLOCK_SIZE 32
 
 #define min(a,b) (((a)<(b))?(a):(b))
 
@@ -47,47 +47,373 @@ static void do_intrinsic(int lda, double* A, double* B, double* C)
   __m256d a_col71 = _mm256_loadu_pd(A + 7*lda + 4);
 
   // For each column of B + C
-  for (int i = 0; i < 8; i++) {
-    // Load the B column in 2 pieces
-    __m256d b_col0 = _mm256_loadu_pd(B + lda * i);
-    __m256d b_col1 = _mm256_loadu_pd(B + lda * i + 4);
-    // Load the C column in 2 pieces
-    __m256d c_col0 = _mm256_loadu_pd(C + lda * i);
-    __m256d c_col1 = _mm256_loadu_pd(C + lda * i + 4);
+  /********UNROLLED*********/
+  __m256d b_col0_0 = _mm256_loadu_pd(B + lda * 0);
+  __m256d bcol1_0 = _mm256_loadu_pd(B + lda * 0 + 4);
+  // Load the C column in 2 pieces
+  __m256d c_col_0 = _mm256_loadu_pd(C + lda * 0);
+  __m256d c_col1_0 = _mm256_loadu_pd(C + lda * 0 + 4);
 
-    // Broadcast the first element of the B col, dot with A col
-    __m256d b_elem = _mm256_set1_pd(b_col0[0]);
-    c_col0 = _mm256_fmadd_pd(a_col00, b_elem, c_col0);
-    // Repeat...
-    c_col1 = _mm256_fmadd_pd(a_col01, b_elem, c_col1);
-    b_elem = _mm256_set1_pd(b_col0[1]);
-    c_col0 = _mm256_fmadd_pd(a_col10, b_elem, c_col0);
-    c_col1 = _mm256_fmadd_pd(a_col11, b_elem, c_col1);
-    b_elem = _mm256_set1_pd(b_col0[2]);
-    c_col0 = _mm256_fmadd_pd(a_col20, b_elem, c_col0);
-    c_col1 = _mm256_fmadd_pd(a_col21, b_elem, c_col1);
-    b_elem = _mm256_set1_pd(b_col0[3]);
-    c_col0 = _mm256_fmadd_pd(a_col30, b_elem, c_col0);
-    c_col1 = _mm256_fmadd_pd(a_col31, b_elem, c_col1);
+  // Broadcast the first element of the B col, dot with A col
+  __m256d b_elem_0 = _mm256_set1_pd(b_col0_0[0]);
+  c_col_0 = _mm256_fmadd_pd(a_col00, b_elem_0, c_col_0);
+  // Repeat...
+  c_col1_0 = _mm256_fmadd_pd(a_col01, b_elem_0, c_col1_0);
+  b_elem_0 = _mm256_set1_pd(b_col0_0[1]);
+  c_col_0 = _mm256_fmadd_pd(a_col10, b_elem_0, c_col_0);
+  c_col1_0 = _mm256_fmadd_pd(a_col11, b_elem_0, c_col1_0);
+  b_elem_0 = _mm256_set1_pd(b_col0_0[2]);
+  c_col_0 = _mm256_fmadd_pd(a_col20, b_elem_0, c_col_0);
+  c_col1_0 = _mm256_fmadd_pd(a_col21, b_elem_0, c_col1_0);
+  b_elem_0 = _mm256_set1_pd(b_col0_0[3]);
+  c_col_0 = _mm256_fmadd_pd(a_col30, b_elem_0, c_col_0);
+  c_col1_0 = _mm256_fmadd_pd(a_col31, b_elem_0, c_col1_0);
 
-    // Repeat more with second half of B col
-    b_elem = _mm256_set1_pd(b_col1[0]);
-    c_col0 = _mm256_fmadd_pd(a_col40, b_elem, c_col0);
-    c_col1 = _mm256_fmadd_pd(a_col41, b_elem, c_col1);
-    b_elem = _mm256_set1_pd(b_col1[1]);
-    c_col0 = _mm256_fmadd_pd(a_col50, b_elem, c_col0);
-    c_col1 = _mm256_fmadd_pd(a_col51, b_elem, c_col1);
-    b_elem = _mm256_set1_pd(b_col1[2]);
-    c_col0 = _mm256_fmadd_pd(a_col60, b_elem, c_col0);
-    c_col1 = _mm256_fmadd_pd(a_col61, b_elem, c_col1);
-    b_elem = _mm256_set1_pd(b_col1[3]);
-    c_col0 = _mm256_fmadd_pd(a_col70, b_elem, c_col0);
-    c_col1 = _mm256_fmadd_pd(a_col71, b_elem, c_col1);
+  // Repeat more with second half of B col
+  b_elem_0 = _mm256_set1_pd(bcol1_0[0]);
+  c_col_0 = _mm256_fmadd_pd(a_col40, b_elem_0, c_col_0);
+  c_col1_0 = _mm256_fmadd_pd(a_col41, b_elem_0, c_col1_0);
+  b_elem_0 = _mm256_set1_pd(bcol1_0[1]);
+  c_col_0 = _mm256_fmadd_pd(a_col50, b_elem_0, c_col_0);
+  c_col1_0 = _mm256_fmadd_pd(a_col51, b_elem_0, c_col1_0);
+  b_elem_0 = _mm256_set1_pd(bcol1_0[2]);
+  c_col_0 = _mm256_fmadd_pd(a_col60, b_elem_0, c_col_0);
+  c_col1_0 = _mm256_fmadd_pd(a_col61, b_elem_0, c_col1_0);
+  b_elem_0 = _mm256_set1_pd(bcol1_0[3]);
+  c_col_0 = _mm256_fmadd_pd(a_col70, b_elem_0, c_col_0);
+  c_col1_0 = _mm256_fmadd_pd(a_col71, b_elem_0, c_col1_0);
 
-    // Store two halves of C col
-    _mm256_storeu_pd(C + lda * i, c_col0);
-    _mm256_storeu_pd(C + lda * i + 4, c_col1);
-  }
+  // Store two halves of C col
+  _mm256_storeu_pd(C + lda * 0, c_col_0);
+  _mm256_storeu_pd(C + lda * 0 + 4, c_col1_0);
+
+  // 1
+
+  __m256d b_col0_1 = _mm256_loadu_pd(B + lda * 1);
+  __m256d bcol1_1 = _mm256_loadu_pd(B + lda * 1 + 4);
+  // Load the C column in 2 pieces
+  __m256d c_col_1 = _mm256_loadu_pd(C + lda * 1);
+  __m256d c_col1_1 = _mm256_loadu_pd(C + lda * 1 + 4);
+
+  // Broadcast the first element of the B col, dot with A col
+  __m256d b_elem_1 = _mm256_set1_pd(b_col0_1[0]);
+  c_col_1 = _mm256_fmadd_pd(a_col00, b_elem_1, c_col_1);
+  // Repeat...
+  c_col1_1 = _mm256_fmadd_pd(a_col01, b_elem_1, c_col1_1);
+  b_elem_1 = _mm256_set1_pd(b_col0_1[1]);
+  c_col_1 = _mm256_fmadd_pd(a_col10, b_elem_1, c_col_1);
+  c_col1_1 = _mm256_fmadd_pd(a_col11, b_elem_1, c_col1_1);
+  b_elem_1 = _mm256_set1_pd(b_col0_1[2]);
+  c_col_1 = _mm256_fmadd_pd(a_col20, b_elem_1, c_col_1);
+  c_col1_1 = _mm256_fmadd_pd(a_col21, b_elem_1, c_col1_1);
+  b_elem_1 = _mm256_set1_pd(b_col0_1[3]);
+  c_col_1 = _mm256_fmadd_pd(a_col30, b_elem_1, c_col_1);
+  c_col1_1 = _mm256_fmadd_pd(a_col31, b_elem_1, c_col1_1);
+
+  // Repeat more with second half of B col
+  b_elem_1 = _mm256_set1_pd(bcol1_1[0]);
+  c_col_1 = _mm256_fmadd_pd(a_col40, b_elem_1, c_col_1);
+  c_col1_1 = _mm256_fmadd_pd(a_col41, b_elem_1, c_col1_1);
+  b_elem_1 = _mm256_set1_pd(bcol1_1[1]);
+  c_col_1 = _mm256_fmadd_pd(a_col50, b_elem_1, c_col_1);
+  c_col1_1 = _mm256_fmadd_pd(a_col51, b_elem_1, c_col1_1);
+  b_elem_1 = _mm256_set1_pd(bcol1_1[2]);
+  c_col_1 = _mm256_fmadd_pd(a_col60, b_elem_1, c_col_1);
+  c_col1_1 = _mm256_fmadd_pd(a_col61, b_elem_1, c_col1_1);
+  b_elem_1 = _mm256_set1_pd(bcol1_1[3]);
+  c_col_1 = _mm256_fmadd_pd(a_col70, b_elem_1, c_col_1);
+  c_col1_1 = _mm256_fmadd_pd(a_col71, b_elem_1, c_col1_1);
+
+  // Store two halves of C col
+  _mm256_storeu_pd(C + lda * 1, c_col_1);
+  _mm256_storeu_pd(C + lda * 1 + 4, c_col1_1);
+
+  // 2
+
+  __m256d b_col0_2 = _mm256_loadu_pd(B + lda * 2);
+  __m256d bcol1_2 = _mm256_loadu_pd(B + lda * 2 + 4);
+  // Load the C column in 2 pieces
+  __m256d c_col_2 = _mm256_loadu_pd(C + lda * 2);
+  __m256d c_col1_2 = _mm256_loadu_pd(C + lda * 2 + 4);
+
+  // Broadcast the first element of the B col, dot with A col
+  __m256d b_elem_2 = _mm256_set1_pd(b_col0_2[0]);
+  c_col_2 = _mm256_fmadd_pd(a_col00, b_elem_2, c_col_2);
+  // Repeat...
+  c_col1_2 = _mm256_fmadd_pd(a_col01, b_elem_2, c_col1_2);
+  b_elem_2 = _mm256_set1_pd(b_col0_2[1]);
+  c_col_2 = _mm256_fmadd_pd(a_col10, b_elem_2, c_col_2);
+  c_col1_2 = _mm256_fmadd_pd(a_col11, b_elem_2, c_col1_2);
+  b_elem_2 = _mm256_set1_pd(b_col0_2[2]);
+  c_col_2 = _mm256_fmadd_pd(a_col20, b_elem_2, c_col_2);
+  c_col1_2 = _mm256_fmadd_pd(a_col21, b_elem_2, c_col1_2);
+  b_elem_2 = _mm256_set1_pd(b_col0_2[3]);
+  c_col_2 = _mm256_fmadd_pd(a_col30, b_elem_2, c_col_2);
+  c_col1_2 = _mm256_fmadd_pd(a_col31, b_elem_2, c_col1_2);
+
+  // Repeat more with second half of B col
+  b_elem_2 = _mm256_set1_pd(bcol1_2[0]);
+  c_col_2 = _mm256_fmadd_pd(a_col40, b_elem_2, c_col_2);
+  c_col1_2 = _mm256_fmadd_pd(a_col41, b_elem_2, c_col1_2);
+  b_elem_2 = _mm256_set1_pd(bcol1_2[1]);
+  c_col_2 = _mm256_fmadd_pd(a_col50, b_elem_2, c_col_2);
+  c_col1_2 = _mm256_fmadd_pd(a_col51, b_elem_2, c_col1_2);
+  b_elem_2 = _mm256_set1_pd(bcol1_2[2]);
+  c_col_2 = _mm256_fmadd_pd(a_col60, b_elem_2, c_col_2);
+  c_col1_2 = _mm256_fmadd_pd(a_col61, b_elem_2, c_col1_2);
+  b_elem_2 = _mm256_set1_pd(bcol1_2[3]);
+  c_col_2 = _mm256_fmadd_pd(a_col70, b_elem_2, c_col_2);
+  c_col1_2 = _mm256_fmadd_pd(a_col71, b_elem_2, c_col1_2);
+
+  // Store two halves of C col
+  _mm256_storeu_pd(C + lda * 2, c_col_2);
+  _mm256_storeu_pd(C + lda * 2 + 4, c_col1_2);
+
+  //3
+
+  __m256d b_col0_3 = _mm256_loadu_pd(B + lda * 3);
+  __m256d bcol1_3 = _mm256_loadu_pd(B + lda * 3 + 4);
+  // Load the C column in 2 pieces
+  __m256d c_col_3 = _mm256_loadu_pd(C + lda * 3);
+  __m256d c_col1_3 = _mm256_loadu_pd(C + lda * 3 + 4);
+
+  // Broadcast the first element of the B col, dot with A col
+  __m256d b_elem_3 = _mm256_set1_pd(b_col0_3[0]);
+  c_col_3 = _mm256_fmadd_pd(a_col00, b_elem_3, c_col_3);
+  // Repeat...
+  c_col1_3 = _mm256_fmadd_pd(a_col01, b_elem_3, c_col1_3);
+  b_elem_3 = _mm256_set1_pd(b_col0_3[1]);
+  c_col_3 = _mm256_fmadd_pd(a_col10, b_elem_3, c_col_3);
+  c_col1_3 = _mm256_fmadd_pd(a_col11, b_elem_3, c_col1_3);
+  b_elem_3 = _mm256_set1_pd(b_col0_3[2]);
+  c_col_3 = _mm256_fmadd_pd(a_col20, b_elem_3, c_col_3);
+  c_col1_3 = _mm256_fmadd_pd(a_col21, b_elem_3, c_col1_3);
+  b_elem_3 = _mm256_set1_pd(b_col0_3[3]);
+  c_col_3 = _mm256_fmadd_pd(a_col30, b_elem_3, c_col_3);
+  c_col1_3 = _mm256_fmadd_pd(a_col31, b_elem_3, c_col1_3);
+
+  // Repeat more with second half of B col
+  b_elem_3 = _mm256_set1_pd(bcol1_3[0]);
+  c_col_3 = _mm256_fmadd_pd(a_col40, b_elem_3, c_col_3);
+  c_col1_3 = _mm256_fmadd_pd(a_col41, b_elem_3, c_col1_3);
+  b_elem_3 = _mm256_set1_pd(bcol1_3[1]);
+  c_col_3 = _mm256_fmadd_pd(a_col50, b_elem_3, c_col_3);
+  c_col1_3 = _mm256_fmadd_pd(a_col51, b_elem_3, c_col1_3);
+  b_elem_3 = _mm256_set1_pd(bcol1_3[2]);
+  c_col_3 = _mm256_fmadd_pd(a_col60, b_elem_3, c_col_3);
+  c_col1_3 = _mm256_fmadd_pd(a_col61, b_elem_3, c_col1_3);
+  b_elem_3 = _mm256_set1_pd(bcol1_3[3]);
+  c_col_3 = _mm256_fmadd_pd(a_col70, b_elem_3, c_col_3);
+  c_col1_3 = _mm256_fmadd_pd(a_col71, b_elem_3, c_col1_3);
+
+  // Store two halves of C col
+  _mm256_storeu_pd(C + lda * 3, c_col_3);
+  _mm256_storeu_pd(C + lda * 3 + 4, c_col1_3);
+
+  //4
+
+  __m256d b_col0_4 = _mm256_loadu_pd(B + lda * 4);
+  __m256d bcol1_4 = _mm256_loadu_pd(B + lda * 4 + 4);
+  // Load the C column in 2 pieces
+  __m256d c_col_4 = _mm256_loadu_pd(C + lda * 4);
+  __m256d c_col1_4 = _mm256_loadu_pd(C + lda * 4 + 4);
+
+  // Broadcast the first element of the B col, dot with A col
+  __m256d b_elem_4 = _mm256_set1_pd(b_col0_4[0]);
+  c_col_4 = _mm256_fmadd_pd(a_col00, b_elem_4, c_col_4);
+  // Repeat...
+  c_col1_4 = _mm256_fmadd_pd(a_col01, b_elem_4, c_col1_4);
+  b_elem_4 = _mm256_set1_pd(b_col0_4[1]);
+  c_col_4 = _mm256_fmadd_pd(a_col10, b_elem_4, c_col_4);
+  c_col1_4 = _mm256_fmadd_pd(a_col11, b_elem_4, c_col1_4);
+  b_elem_4 = _mm256_set1_pd(b_col0_4[2]);
+  c_col_4 = _mm256_fmadd_pd(a_col20, b_elem_4, c_col_4);
+  c_col1_4 = _mm256_fmadd_pd(a_col21, b_elem_4, c_col1_4);
+  b_elem_4 = _mm256_set1_pd(b_col0_4[3]);
+  c_col_4 = _mm256_fmadd_pd(a_col30, b_elem_4, c_col_4);
+  c_col1_4 = _mm256_fmadd_pd(a_col31, b_elem_4, c_col1_4);
+
+  // Repeat more with second half of B col
+  b_elem_4 = _mm256_set1_pd(bcol1_4[0]);
+  c_col_4 = _mm256_fmadd_pd(a_col40, b_elem_4, c_col_4);
+  c_col1_4 = _mm256_fmadd_pd(a_col41, b_elem_4, c_col1_4);
+  b_elem_4 = _mm256_set1_pd(bcol1_4[1]);
+  c_col_4 = _mm256_fmadd_pd(a_col50, b_elem_4, c_col_4);
+  c_col1_4 = _mm256_fmadd_pd(a_col51, b_elem_4, c_col1_4);
+  b_elem_4 = _mm256_set1_pd(bcol1_4[2]);
+  c_col_4 = _mm256_fmadd_pd(a_col60, b_elem_4, c_col_4);
+  c_col1_4 = _mm256_fmadd_pd(a_col61, b_elem_4, c_col1_4);
+  b_elem_4 = _mm256_set1_pd(bcol1_4[3]);
+  c_col_4 = _mm256_fmadd_pd(a_col70, b_elem_4, c_col_4);
+  c_col1_4 = _mm256_fmadd_pd(a_col71, b_elem_4, c_col1_4);
+
+  // Store two halves of C col
+  _mm256_storeu_pd(C + lda * 4, c_col_4);
+  _mm256_storeu_pd(C + lda * 4 + 4, c_col1_4);
+
+  //5
+
+  __m256d b_col0_5 = _mm256_loadu_pd(B + lda * 5);
+  __m256d bcol1_5 = _mm256_loadu_pd(B + lda * 5 + 4);
+  // Load the C column in 2 pieces
+  __m256d c_col_5 = _mm256_loadu_pd(C + lda * 5);
+  __m256d c_col1_5 = _mm256_loadu_pd(C + lda * 5 + 4);
+
+  // Broadcast the first element of the B col, dot with A col
+  __m256d b_elem_5 = _mm256_set1_pd(b_col0_5[0]);
+  c_col_5 = _mm256_fmadd_pd(a_col00, b_elem_5, c_col_5);
+  // Repeat...
+  c_col1_5 = _mm256_fmadd_pd(a_col01, b_elem_5, c_col1_5);
+  b_elem_5 = _mm256_set1_pd(b_col0_5[1]);
+  c_col_5 = _mm256_fmadd_pd(a_col10, b_elem_5, c_col_5);
+  c_col1_5 = _mm256_fmadd_pd(a_col11, b_elem_5, c_col1_5);
+  b_elem_5 = _mm256_set1_pd(b_col0_5[2]);
+  c_col_5 = _mm256_fmadd_pd(a_col20, b_elem_5, c_col_5);
+  c_col1_5 = _mm256_fmadd_pd(a_col21, b_elem_5, c_col1_5);
+  b_elem_5 = _mm256_set1_pd(b_col0_5[3]);
+  c_col_5 = _mm256_fmadd_pd(a_col30, b_elem_5, c_col_5);
+  c_col1_5 = _mm256_fmadd_pd(a_col31, b_elem_5, c_col1_5);
+
+  // Repeat more with second half of B col
+  b_elem_5 = _mm256_set1_pd(bcol1_5[0]);
+  c_col_5 = _mm256_fmadd_pd(a_col40, b_elem_5, c_col_5);
+  c_col1_5 = _mm256_fmadd_pd(a_col41, b_elem_5, c_col1_5);
+  b_elem_5 = _mm256_set1_pd(bcol1_5[1]);
+  c_col_5 = _mm256_fmadd_pd(a_col50, b_elem_5, c_col_5);
+  c_col1_5 = _mm256_fmadd_pd(a_col51, b_elem_5, c_col1_5);
+  b_elem_5 = _mm256_set1_pd(bcol1_5[2]);
+  c_col_5 = _mm256_fmadd_pd(a_col60, b_elem_5, c_col_5);
+  c_col1_5 = _mm256_fmadd_pd(a_col61, b_elem_5, c_col1_5);
+  b_elem_5 = _mm256_set1_pd(bcol1_5[3]);
+  c_col_5 = _mm256_fmadd_pd(a_col70, b_elem_5, c_col_5);
+  c_col1_5 = _mm256_fmadd_pd(a_col71, b_elem_5, c_col1_5);
+
+  // Store two halves of C col
+  _mm256_storeu_pd(C + lda * 5, c_col_5);
+  _mm256_storeu_pd(C + lda * 5 + 4, c_col1_5);
+
+  //6
+
+  __m256d b_col0_6 = _mm256_loadu_pd(B + lda * 6);
+  __m256d bcol1_6 = _mm256_loadu_pd(B + lda * 6 + 4);
+  // Load the C column in 2 pieces
+  __m256d c_col_6 = _mm256_loadu_pd(C + lda * 6);
+  __m256d c_col1_6 = _mm256_loadu_pd(C + lda * 6 + 4);
+
+  // Broadcast the first element of the B col, dot with A col
+  __m256d b_elem_6 = _mm256_set1_pd(b_col0_6[0]);
+  c_col_6 = _mm256_fmadd_pd(a_col00, b_elem_6, c_col_6);
+  // Repeat...
+  c_col1_6 = _mm256_fmadd_pd(a_col01, b_elem_6, c_col1_6);
+  b_elem_6 = _mm256_set1_pd(b_col0_6[1]);
+  c_col_6 = _mm256_fmadd_pd(a_col10, b_elem_6, c_col_6);
+  c_col1_6 = _mm256_fmadd_pd(a_col11, b_elem_6, c_col1_6);
+  b_elem_6 = _mm256_set1_pd(b_col0_6[2]);
+  c_col_6 = _mm256_fmadd_pd(a_col20, b_elem_6, c_col_6);
+  c_col1_6 = _mm256_fmadd_pd(a_col21, b_elem_6, c_col1_6);
+  b_elem_6 = _mm256_set1_pd(b_col0_6[3]);
+  c_col_6 = _mm256_fmadd_pd(a_col30, b_elem_6, c_col_6);
+  c_col1_6 = _mm256_fmadd_pd(a_col31, b_elem_6, c_col1_6);
+
+  // Repeat more with second half of B col
+  b_elem_6 = _mm256_set1_pd(bcol1_6[0]);
+  c_col_6 = _mm256_fmadd_pd(a_col40, b_elem_6, c_col_6);
+  c_col1_6 = _mm256_fmadd_pd(a_col41, b_elem_6, c_col1_6);
+  b_elem_6 = _mm256_set1_pd(bcol1_6[1]);
+  c_col_6 = _mm256_fmadd_pd(a_col50, b_elem_6, c_col_6);
+  c_col1_6 = _mm256_fmadd_pd(a_col51, b_elem_6, c_col1_6);
+  b_elem_6 = _mm256_set1_pd(bcol1_6[2]);
+  c_col_6 = _mm256_fmadd_pd(a_col60, b_elem_6, c_col_6);
+  c_col1_6 = _mm256_fmadd_pd(a_col61, b_elem_6, c_col1_6);
+  b_elem_6 = _mm256_set1_pd(bcol1_6[3]);
+  c_col_6 = _mm256_fmadd_pd(a_col70, b_elem_6, c_col_6);
+  c_col1_6 = _mm256_fmadd_pd(a_col71, b_elem_6, c_col1_6);
+
+  // Store two halves of C col
+  _mm256_storeu_pd(C + lda * 6, c_col_6);
+  _mm256_storeu_pd(C + lda * 6 + 4, c_col1_6);
+
+  //7
+
+  __m256d b_col0_7 = _mm256_loadu_pd(B + lda * 7);
+  __m256d bcol1_7 = _mm256_loadu_pd(B + lda * 7 + 4);
+  // Load the C column in 2 pieces
+  __m256d c_col_7 = _mm256_loadu_pd(C + lda * 7);
+  __m256d c_col1_7 = _mm256_loadu_pd(C + lda * 7 + 4);
+
+  // Broadcast the first element of the B col, dot with A col
+  __m256d b_elem_7 = _mm256_set1_pd(b_col0_7[0]);
+  c_col_7 = _mm256_fmadd_pd(a_col00, b_elem_7, c_col_7);
+  // Repeat...
+  c_col1_7 = _mm256_fmadd_pd(a_col01, b_elem_7, c_col1_7);
+  b_elem_7 = _mm256_set1_pd(b_col0_7[1]);
+  c_col_7 = _mm256_fmadd_pd(a_col10, b_elem_7, c_col_7);
+  c_col1_7 = _mm256_fmadd_pd(a_col11, b_elem_7, c_col1_7);
+  b_elem_7 = _mm256_set1_pd(b_col0_7[2]);
+  c_col_7 = _mm256_fmadd_pd(a_col20, b_elem_7, c_col_7);
+  c_col1_7 = _mm256_fmadd_pd(a_col21, b_elem_7, c_col1_7);
+  b_elem_7 = _mm256_set1_pd(b_col0_7[3]);
+  c_col_7 = _mm256_fmadd_pd(a_col30, b_elem_7, c_col_7);
+  c_col1_7 = _mm256_fmadd_pd(a_col31, b_elem_7, c_col1_7);
+
+  // Repeat more with second half of B col
+  b_elem_7 = _mm256_set1_pd(bcol1_7[0]);
+  c_col_7 = _mm256_fmadd_pd(a_col40, b_elem_7, c_col_7);
+  c_col1_7 = _mm256_fmadd_pd(a_col41, b_elem_7, c_col1_7);
+  b_elem_7 = _mm256_set1_pd(bcol1_7[1]);
+  c_col_7 = _mm256_fmadd_pd(a_col50, b_elem_7, c_col_7);
+  c_col1_7 = _mm256_fmadd_pd(a_col51, b_elem_7, c_col1_7);
+  b_elem_7 = _mm256_set1_pd(bcol1_7[2]);
+  c_col_7 = _mm256_fmadd_pd(a_col60, b_elem_7, c_col_7);
+  c_col1_7 = _mm256_fmadd_pd(a_col61, b_elem_7, c_col1_7);
+  b_elem_7 = _mm256_set1_pd(bcol1_7[3]);
+  c_col_7 = _mm256_fmadd_pd(a_col70, b_elem_7, c_col_7);
+  c_col1_7 = _mm256_fmadd_pd(a_col71, b_elem_7, c_col1_7);
+
+  // Store two halves of C col
+  _mm256_storeu_pd(C + lda * 7, c_col_7);
+  _mm256_storeu_pd(C + lda * 7 + 4, c_col1_7);
+  // for (int i = 0; i < 8; i++) {
+  //   // Load the B column in 2 pieces
+  //   __m256d b_col0 = _mm256_loadu_pd(B + lda * i);
+  //   __m256d b_col1 = _mm256_loadu_pd(B + lda * i + 4);
+  //   // Load the C column in 2 pieces
+  //   __m256d c_col0 = _mm256_loadu_pd(C + lda * i);
+  //   __m256d c_col1 = _mm256_loadu_pd(C + lda * i + 4);
+
+  //   // Broadcast the first element of the B col, dot with A col
+  //   __m256d b_elem = _mm256_set1_pd(b_col0[0]);
+  //   c_col0 = _mm256_fmadd_pd(a_col00, b_elem, c_col0);
+  //   // Repeat...
+  //   c_col1 = _mm256_fmadd_pd(a_col01, b_elem, c_col1);
+  //   b_elem = _mm256_set1_pd(b_col0[1]);
+  //   c_col0 = _mm256_fmadd_pd(a_col10, b_elem, c_col0);
+  //   c_col1 = _mm256_fmadd_pd(a_col11, b_elem, c_col1);
+  //   b_elem = _mm256_set1_pd(b_col0[2]);
+  //   c_col0 = _mm256_fmadd_pd(a_col20, b_elem, c_col0);
+  //   c_col1 = _mm256_fmadd_pd(a_col21, b_elem, c_col1);
+  //   b_elem = _mm256_set1_pd(b_col0[3]);
+  //   c_col0 = _mm256_fmadd_pd(a_col30, b_elem, c_col0);
+  //   c_col1 = _mm256_fmadd_pd(a_col31, b_elem, c_col1);
+
+  //   // Repeat more with second half of B col
+  //   b_elem = _mm256_set1_pd(b_col1[0]);
+  //   c_col0 = _mm256_fmadd_pd(a_col40, b_elem, c_col0);
+  //   c_col1 = _mm256_fmadd_pd(a_col41, b_elem, c_col1);
+  //   b_elem = _mm256_set1_pd(b_col1[1]);
+  //   c_col0 = _mm256_fmadd_pd(a_col50, b_elem, c_col0);
+  //   c_col1 = _mm256_fmadd_pd(a_col51, b_elem, c_col1);
+  //   b_elem = _mm256_set1_pd(b_col1[2]);
+  //   c_col0 = _mm256_fmadd_pd(a_col60, b_elem, c_col0);
+  //   c_col1 = _mm256_fmadd_pd(a_col61, b_elem, c_col1);
+  //   b_elem = _mm256_set1_pd(b_col1[3]);
+  //   c_col0 = _mm256_fmadd_pd(a_col70, b_elem, c_col0);
+  //   c_col1 = _mm256_fmadd_pd(a_col71, b_elem, c_col1);
+
+  //   // Store two halves of C col
+  //   _mm256_storeu_pd(C + lda * i, c_col0);
+  //   _mm256_storeu_pd(C + lda * i + 4, c_col1);
+  // }
 }
 
 void do_reference (int n, double* A, double* B, double* C)
