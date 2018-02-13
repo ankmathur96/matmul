@@ -18,8 +18,8 @@ LDFLAGS = -Wall
 # librt is needed for clock_gettime
 LDLIBS = -lrt -fopenmp -lblas
 
-targets = benchmark-naive benchmark-blocked benchmark-blas benchmark-blocked2
-objects = benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o dgemm-blocked2.o
+targets = benchmark-naive benchmark-blocked benchmark-blas benchmark-blocked2-2
+objects = benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o dgemm-blocked2-2.o
 
 .PHONY : default
 default : all
@@ -33,7 +33,7 @@ benchmark-blocked : benchmark.o dgemm-blocked.o
 	$(CC) -o $@ $^ $(LDLIBS)
 benchmark-blas : benchmark.o dgemm-blas.o
 	$(CC) -o $@ $^ $(LDLIBS)
-benchmark-blocked2: benchmark.o dgemm-blocked2.o
+benchmark-blocked2-2: benchmark.o dgemm-blocked2-2.o
 	$(CC) -o $@ $^ $(LDLIBS)
 
 %.o : %.c

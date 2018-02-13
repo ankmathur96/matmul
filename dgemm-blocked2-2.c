@@ -13,6 +13,7 @@ LDLIBS = -lrt -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKL
 
 */
 
+#include <omp.h>
 #include <immintrin.h>
 #include <assert.h>
 #include <stdio.h>
@@ -23,6 +24,8 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 #define BLOCK_SIZE 256
 #endif
 #define INNER_BLOCK_SIZE 128
+
+#define NTHREADS 32
 
 #define min(a,b) (((a)<(b))?(a):(b))
 
@@ -216,10 +219,15 @@ void square_dgemm (int lda, double* A, double* B, double* C)
   assert(INNER_BLOCK_SIZE % 4 == 0);
 //  do_block_test();
 
+  omp_set_num_threads(NTHREADS);  
+
+ # pragma omp parallel  
+{
   /* For each block-row of A */ 
   for (int j = 0; j < lda; j += BLOCK_SIZE)
     /* For each block-column of B */
     for (int k = 0; k < lda; k += BLOCK_SIZE)
+      # pragma omp for schedule(static)
       /* Accumulate block dgemms into block of C */
       for (int i = 0; i < lda; i += BLOCK_SIZE)
       {
@@ -231,4 +239,5 @@ void square_dgemm (int lda, double* A, double* B, double* C)
         /* Perform individual block dgemm */
         do_block(lda, M, N, K, A + i + k*lda, B + k + j*lda, C + i + j*lda);
       }
+  }
 }
