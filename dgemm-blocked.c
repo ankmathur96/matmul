@@ -217,29 +217,18 @@ void square_dgemm (int lda, double* A, double* B, double* C)
 //  do_block_test();
 
   /* For each block-row of A */ 
-  #pragma omp parallel
-  {
-      double* tmp = calloc(lda * lda, sizeof(double));
-      #pragma omp for
+  #pragma omp parallel for
+  for (int j = 0; j < lda; j += BLOCK_SIZE) {
+    for (int i = 0; i < lda; i += BLOCK_SIZE) {
       for (int k = 0; k < lda; k += BLOCK_SIZE) {
-        /* For each block-column of B */
-        for (int j = 0; j < lda; j += BLOCK_SIZE) {
-          /* Accumulate block dgemms into block of C */
-          for (int i = 0; i < lda; i += BLOCK_SIZE)
-          {
-            /* Correct block dimensions if block "goes off edge of" the matrix */
-            int M = min (BLOCK_SIZE, lda-i);
-            int N = min (BLOCK_SIZE, lda-j);
-            int K = min (BLOCK_SIZE, lda-k);
+        /* Correct block dimensions if block "goes off edge of" the matrix */
+        int M = min (BLOCK_SIZE, lda-i);
+        int N = min (BLOCK_SIZE, lda-j);
+        int K = min (BLOCK_SIZE, lda-k);
 
-            /* Perform individual block dgemm */
-            do_block(lda, M, N, K, A + i + k*lda, B + k + j*lda, tmp + i + j*lda);
-          }
-        }
+        /* Perform individual block dgemm */
+        do_block(lda, M, N, K, A + i + k*lda, B + k + j*lda, C + i + j*lda);
       }
-      #pragma omp critical
-      for (int i=0; i < lda * lda; i++) {
-          C[i] += tmp[i];
-      }
+    }
   }
 }
