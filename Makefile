@@ -16,7 +16,7 @@ OPT = -O2
 CFLAGS = -Wall -std=gnu99 -mavx2 -mavx -mfma -g $(OPT)
 LDFLAGS = -Wall
 # librt is needed for clock_gettime
-LDLIBS = -lrt -lblas
+LDLIBS = -lrt
 
 targets = benchmark-naive benchmark-blocked benchmark-blas benchmark-blocked2
 objects = benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o dgemm-blocked2.o
